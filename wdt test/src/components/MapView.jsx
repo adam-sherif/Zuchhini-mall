@@ -82,9 +82,12 @@ export default function MapView({ stores, onEnterStore, earnedDiscount }) {
   const startX = (VX1 + VX2) / 2;
   const startY = (HY1 + HY2) / 2;
 
-  const keysRef    = useRef({});const posRef     = useRef({ x: startX, y: startY });const movingRef  = useRef(false);
-  const [pos, setPos] = useState({ x: startX, y: startY });const [moving, setMoving] = useState(false);const [nearStore, setNearStore] = useState(null);
-  const containerRef = useRef(null);
+  const keysRef    = useRef({});
+  const posRef     = useRef({ x: startX, y: startY });
+  const movingRef  = useRef(false);
+  const [pos, setPos] = useState({ x: startX, y: startY });
+  const [moving, setMoving] = useState(false);
+  const [nearStore, setNearStore] = useState(null);
 
   const getCenter = (s) => {
     const p = STORE_POSITIONS[s.id] || { x: s.x, y: s.y };
@@ -94,20 +97,24 @@ export default function MapView({ stores, onEnterStore, earnedDiscount }) {
   useEffect(() => {
     const down = e => { keysRef.current[e.key.toLowerCase()] = true; if (["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase())) e.preventDefault(); };
     const up = e => { keysRef.current[e.key.toLowerCase()] = false; };
-    window.addEventListener("keydown", down);window.addEventListener("keyup", up);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down);window.removeEventListener("keyup", up); };
   }, []);
 
   useEffect(() => {
     let rafId;
     function tick() {
-      const k = keysRef.current;let { x, y } = posRef.current;let moved = false;
+      const k = keysRef.current;
+      let { x, y } = posRef.current;
+      let moved = false;
       if (k["w"] || k["arrowup"])    { const ny = y - SPD; if (!isBlocked(x, ny)) { y = ny; moved = true; } }
       if (k["s"] || k["arrowdown"])  { const ny = y + SPD; if (!isBlocked(x, ny)) { y = ny; moved = true; } }
       if (k["a"] || k["arrowleft"])  { const nx = x - SPD; if (!isBlocked(nx, y)) { x = nx; moved = true; } }
       if (k["d"] || k["arrowright"]) { const nx = x + SPD; if (!isBlocked(nx, y)) { x = nx; moved = true; } }
       if (moved) {
-        posRef.current = { x, y };setPos({ x, y });
+        posRef.current = { x, y };
+        setPos({ x, y });
         if (!movingRef.current) { movingRef.current = true;setMoving(true); }
       } else { if (movingRef.current) { movingRef.current = false;setMoving(false); } }
       rafId = requestAnimationFrame(tick);
@@ -136,14 +143,42 @@ export default function MapView({ stores, onEnterStore, earnedDiscount }) {
 
   return (
     <div style={{ background: "#F7F4F0", minHeight: "calc(100vh - 58px)", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: "#fff", borderBottom: "1px solid #E8E2DB", padding: "8px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: "clamp(11px, 2vw, 13px)" }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .map-container { padding: clamp(12px, 3vw, 20px); height: auto; }
+          .d-pad-section { display: flex !important; }
+          .info-bar { position: relative; margin-bottom: 12px; }
+        }
+        @media (min-width: 769px) {
+          .map-container { padding: 20px 40px; flex: 1; display: flex; align-items: center; justify-content: center; }
+          .d-pad-section { display: none !important; }
+          .info-bar { position: relative; margin-bottom: 16px; }
+        }
+      `}</style>
+
+      {/* Info bar */}
+      <div className="info-bar" style={{ background: "#fff", borderBottom: "1px solid #E8E2DB", padding: "8px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: "clamp(11px, 2vw, 13px)", borderRadius: "0" }}>
         <span style={{ fontWeight: 600, color: "#6B7280" }}>🗺️ <b>Zucchini Mall</b> — <span style={{ color: "#4F46E5" }}>WASD/Arrows</span> · <span style={{ color: "#FF5733" }}>E</span> to visit</span>
         {earnedDiscount > 0 && (<div style={{ marginLeft: "auto", background: "rgba(79,70,229,.08)", border: "1px solid rgba(79,70,229,.2)", borderRadius: 50, padding: "4px 12px", fontSize: "clamp(10px, 1.5vw, 12px)", fontWeight: 800, color: "#4F46E5" }}>🎫 {earnedDiscount}% OFF</div>)}
         {nearStore && (<div style={{ background: "rgba(255,87,51,.08)", border: "1px solid rgba(255,87,51,.2)", borderRadius: 50, padding: "4px 12px", fontSize: "clamp(10px, 1.5vw, 12px)", fontWeight: 800, color: "#FF5733", animation: "pulse 1s ease-in-out infinite" }}>📍 {nearStore.emoji} {nearStore.name}</div>)}
       </div>
 
-      <div ref={containerRef} style={{ flex: 1, overflow: "hidden", background: "#F7F4F0", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} style={{ display: "block", width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%" }} preserveAspectRatio="xMidYMid meet">
+      {/* Map container - responsive sizing */}
+      <div className="map-container" style={{}}>
+        <svg 
+          viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+          style={{
+            width: "100%",
+            height: "auto",
+            maxWidth: "min(900px, 90vw)",
+            maxHeight: "min(600px, 70vh)",
+            borderRadius: 16,
+            boxShadow: "0 4px 30px rgba(0,0,0,.1)",
+            border: "1px solid #D9CFC4",
+            display: "block",
+          }}
+          preserveAspectRatio="xMidYMid meet"
+        >
           <defs>
             <filter id="bubbleShadow"><feDropShadow dx={0} dy={3} stdDeviation={5} floodColor="#000" floodOpacity={0.12} /></filter>
             <pattern id="floorTile" width={40} height={40} patternUnits="userSpaceOnUse"><rect width={40} height={40} fill="#F0EBE1" /><path d="M0 20 L40 20 M20 0 L20 40" stroke="#E8E0D3" strokeWidth={0.6} /></pattern>
@@ -189,7 +224,8 @@ export default function MapView({ stores, onEnterStore, earnedDiscount }) {
         </svg>
       </div>
 
-      <div style={{ padding: "clamp(8px, 2vw, 16px)", background: "#fff", borderTop: "1px solid #E8E2DB", display: "flex", justifyContent: "center", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      {/* Mobile D-Pad - hidden on desktop */}
+      <div className="d-pad-section" style={{ padding: "clamp(8px, 2vw, 16px)", background: "#fff", borderTop: "1px solid #E8E2DB", display: "flex", justifyContent: "center", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <div style={{ display: "grid", gridTemplateColumns: "44px 44px 44px", gridTemplateRows: "44px 44px", gap: 4 }}>
           <div /><DPadBtn label="▲" onStart={() => pressKey("arrowup")}    onStop={() => releaseKey("arrowup")} /><div />
           <DPadBtn label="◀" onStart={() => pressKey("arrowleft")}  onStop={() => releaseKey("arrowleft")} />
